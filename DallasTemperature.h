@@ -213,6 +213,13 @@ class DallasTemperature
 
   private:
   typedef uint8_t ScratchPad[9];
+#if defined(MAX_DS_DEVICES) && MAX_DS_DEVICES > 0
+  DeviceAddress deviceAddresses[MAX_DS_DEVICES];
+#define INTERNAL_DEVICE_ADDRESSES
+#else
+#undef INTERNAL_DEVICE_ADDRESSES
+#endif
+
   
   // parasite power on or off
   bool parasite;

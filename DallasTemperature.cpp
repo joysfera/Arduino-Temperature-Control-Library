@@ -33,7 +33,11 @@ DallasTemperature::DallasTemperature(OneWire* _oneWire)
 // initialise the bus
 void DallasTemperature::begin(void)
 {
+#ifdef INTERNAL_DEVICE_ADDRESSES
+    uint8_t *deviceAddress = deviceAddresses[0];
+#else
     DeviceAddress deviceAddress;
+#endif
 
     _wire->reset_search();
     devices = 0; // Reset the number of devices when we enumerate wire devices
@@ -51,6 +55,10 @@ void DallasTemperature::begin(void)
             bitResolution = max(bitResolution, getResolution(deviceAddress));
 
             devices++;
+#ifdef INTERNAL_DEVICE_ADDRESSES
+            if (devices >= MAX_DS_DEVICES) break;
+            deviceAddress = deviceAddresses[devices];
+#endif
         }
     }
 }
@@ -71,6 +79,13 @@ bool DallasTemperature::validAddress(const uint8_t* deviceAddress)
 // returns true if the device was found
 bool DallasTemperature::getAddress(uint8_t* deviceAddress, uint8_t index)
 {
+#ifdef INTERNAL_DEVICE_ADDRESSES
+    if (index < devices)
+    {
+        memcpy(deviceAddress, deviceAddresses[index], sizeof(DeviceAddress));
+        return true;
+    }
+#else
     uint8_t depth = 0;
 
     _wire->reset_search();
@@ -80,7 +95,7 @@ bool DallasTemperature::getAddress(uint8_t* deviceAddress, uint8_t index)
         if (depth == index && validAddress(deviceAddress)) return true;
         depth++;
     }
-
+#endif
     return false;
 }
 
@@ -748,3 +763,6 @@ void DallasTemperature::operator delete(void* p)
 }
 
 #endif
+
+/* vim: set softtabstop=4 shiftwidth=4 expandtab */
+
