@@ -238,7 +238,7 @@ class DallasTemperature
 
   uint8_t *deviceAddresses;
   uint8_t maxDevices;
-  
+
   // reads scratchpad and returns the raw temperature
   int16_t calculateTemperature(const uint8_t*, uint8_t*);
   
