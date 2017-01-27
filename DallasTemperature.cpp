@@ -17,27 +17,34 @@ extern "C" {
 }
 #endif
 
-DallasTemperature::DallasTemperature(OneWire* _oneWire)
-#if REQUIRESALARMS
-    : _AlarmHandler(&defaultAlarmHandler)
-#endif
+DallasTemperature::DallasTemperature(OneWire* _oneWire, uint8_t _maxDevices)
+    : _wire(_oneWire), maxDevices(_maxDevices)
 {
-    _wire = _oneWire;
+#if REQUIRESALARMS
+    _AlarmHandler = &defaultAlarmHandler;
+#endif
     devices = 0;
+    deviceAddresses = maxDevices ? (uint8_t *)malloc(maxDevices * sizeof(DeviceAddress)) : NULL;
     parasite = false;
     bitResolution = 9;
     waitForConversion = true;
     checkForConversion = true;
 }
 
+DallasTemperature::~DallasTemperature()
+{
+    free(deviceAddresses);
+}
+
 // initialise the bus
 void DallasTemperature::begin(void)
 {
-#ifdef INTERNAL_DEVICE_ADDRESSES
-    uint8_t *deviceAddress = deviceAddresses[0];
-#else
-    DeviceAddress deviceAddress;
-#endif
+    DeviceAddress _deviceAddress;
+    uint8_t *deviceAddress = deviceAddresses;
+    if (deviceAddress == NULL)
+    {
+        deviceAddress = _deviceAddress;
+    }
 
     _wire->reset_search();
     devices = 0; // Reset the number of devices when we enumerate wire devices
@@ -55,10 +62,12 @@ void DallasTemperature::begin(void)
             bitResolution = max(bitResolution, getResolution(deviceAddress));
 
             devices++;
-#ifdef INTERNAL_DEVICE_ADDRESSES
-            if (devices >= MAX_DS_DEVICES) break;
-            deviceAddress = deviceAddresses[devices];
-#endif
+
+            if (maxDevices)
+            {
+                if (devices >= maxDevices) break;
+                deviceAddress += sizeof(DeviceAddress);
+            }
         }
     }
 }
@@ -79,13 +88,12 @@ bool DallasTemperature::validAddress(const uint8_t* deviceAddress)
 // returns true if the device was found
 bool DallasTemperature::getAddress(uint8_t* deviceAddress, uint8_t index)
 {
-#ifdef INTERNAL_DEVICE_ADDRESSES
-    if (index < devices)
+    if (maxDevices && index < devices)
     {
-        memcpy(deviceAddress, deviceAddresses[index], sizeof(DeviceAddress));
+        memcpy(deviceAddress, deviceAddresses + index*sizeof(DeviceAddress), sizeof(DeviceAddress));
         return true;
     }
-#else
+
     uint8_t depth = 0;
 
     _wire->reset_search();
@@ -95,7 +103,7 @@ bool DallasTemperature::getAddress(uint8_t* deviceAddress, uint8_t index)
         if (depth == index && validAddress(deviceAddress)) return true;
         depth++;
     }
-#endif
+
     return false;
 }
 
@@ -367,7 +375,7 @@ bool DallasTemperature::requestTemperaturesByAddress(const uint8_t* deviceAddres
 }
 
 // returns number of milliseconds to wait till conversion is complete (based on IC datasheet)
-int16_t DallasTemperature::millisToWaitForConversion(uint8_t bitResolution)
+uint16_t DallasTemperature::millisToWaitForConversion(uint8_t bitResolution)
 {
     switch (bitResolution)
     {

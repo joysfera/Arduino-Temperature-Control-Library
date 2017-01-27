@@ -64,7 +64,8 @@ class DallasTemperature
 {
   public:
 
-  DallasTemperature(OneWire*);
+  DallasTemperature(OneWire*, uint8_t = 0);
+  ~DallasTemperature();
 
   // initialise bus
   void begin(void);
@@ -146,6 +147,8 @@ class DallasTemperature
   
   bool isConversionAvailable(const uint8_t*);
 
+  static uint16_t millisToWaitForConversion(uint8_t);
+
   #if REQUIRESALARMS
   
   typedef void AlarmHandler(const uint8_t*);
@@ -213,14 +216,7 @@ class DallasTemperature
 
   private:
   typedef uint8_t ScratchPad[9];
-#if defined(MAX_DS_DEVICES) && MAX_DS_DEVICES > 0
-  DeviceAddress deviceAddresses[MAX_DS_DEVICES];
-#define INTERNAL_DEVICE_ADDRESSES
-#else
-#undef INTERNAL_DEVICE_ADDRESSES
-#endif
 
-  
   // parasite power on or off
   bool parasite;
 
@@ -240,11 +236,12 @@ class DallasTemperature
   // Take a pointer to one wire instance
   OneWire* _wire;
 
+  uint8_t *deviceAddresses;
+  uint8_t maxDevices;
+  
   // reads scratchpad and returns the raw temperature
   int16_t calculateTemperature(const uint8_t*, uint8_t*);
   
-  int16_t millisToWaitForConversion(uint8_t);
-
   void	blockTillConversionComplete(uint8_t, const uint8_t*);
   
   #if REQUIRESALARMS
